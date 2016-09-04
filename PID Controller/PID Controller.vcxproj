@@ -146,9 +146,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="File.h" />
     <ClInclude Include="PID.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="File.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

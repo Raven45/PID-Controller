@@ -84,6 +84,8 @@ namespace ControlLib {
 		**********************************************************************/
 		DataType Update (DataType Error, unsigned int DeltaTime);
 
+		void Initialize ();
+
 	protected:
 		float Kp;
 		float Ki;
@@ -202,8 +204,31 @@ namespace ControlLib {
 	**********************************************************************/
 	template<class DataType>
 	inline DataType PID<DataType>::Update (DataType Error, unsigned int DeltaTime) {
+
+		DataType Output;
+
+		//Calculate proportional portion of the output.
+		Output = CalculateP (Error);
 		
-		return CalculateP (Error) + CalculateD (Error, DeltaTime) + CalculateI (Error, DeltaTime);
+		//Calculate the integral portion if enabled.
+		if (Ki != 0.0f) {
+			Output += CalculateI (Error, DeltaTime);
+		}
+
+		//Calculate the derivative portion if enabled.
+		if (Kd != 0.0f) {
+			Output += CalculateD (Error, DeltaTime);
+		}
+
+		PreviousError = Error;
+
+		return Output;
+	}
+
+	template<class DataType>
+	inline void PID<DataType>::Initialize () {
+		SumErrors = ZeroPoint;
+		PreviousError = ZeroPoint;
 	}
 
 	/**********************************************************************
@@ -217,7 +242,8 @@ namespace ControlLib {
 	template<class DataType>
 	inline DataType PID<DataType>::CalculateP (DataType Error) {
 		
-		return Kp * Error;
+		DataType Output = Kp * Error;
+		return Output;
 	}
 
 	/**********************************************************************
@@ -227,15 +253,30 @@ namespace ControlLib {
 	Description:	Will take a pre-calculated error and calculate the output
 					of the internal integral controller.
 	History:	9/3/2016: Initial Development.
+				9/4/2016: Implemented the 3/8th's rule for integration.
 	**********************************************************************/
 	template<class DataType>
 	inline DataType PID<DataType>::CalculateI (DataType Error, unsigned int DeltaTime) {
 
-		DataType Result = ZeroPoint;
+		DataType Output;
 
 		SumErrors += Ki * Error;
 	
-		return SumErrors * DeltaTime;
+		unsigned int n = 6; //we'll start with 6. Must be multiple of three.
+		unsigned int H = DeltaTime / n;
+
+		for (int i = 1; i < n; i++) {
+			if (i % 3 == 0) {
+				SumErrors += 2 * Ki * Error;
+			}
+			else {
+				SumErrors += 3 * Ki * Error;
+			}
+		}
+		SumErrors += Ki * Error;
+		Output = ((3 * H) / 8)*SumErrors;
+
+		return Output;
 	}
 
 	/**********************************************************************
