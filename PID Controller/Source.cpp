@@ -5,29 +5,30 @@
 
 void main () {
 
-	ControlLib::PID<int> Controller;
+	ControlLib::PID<float> Controller;
 	Controller.SetKp (10.0f);
-	Controller.SetKi (1.0f);
-	Controller.SetZeroPoint (0);
+	Controller.SetKi (0.01f);
+	Controller.SetZeroPoint (0.0f);
 	Controller.Initialize ();
 
 	CSV_File output;
 	output.CreateFile ("PID_Test_01.csv");
 
 	unsigned int DeltaTime = 0x1F0;
-	int SV = 0;
-	int PV = 0;
+	float SV = 0;
+	float PV = 0;
 	for (int i = 0; i < 500; i++) {
 
 		std::vector<std::string> Line;
 		if (i < 100) {
-			Line.push_back ("0");
 		}
-		else {
-			Line.push_back ("50");
-			SV = 50;
+		else if (i == 100) {
+			SV = 100.0f;
 		}
-
+		else if (i == 150) {
+			SV = 0.0f;
+		}
+		Line.push_back (std::to_string (SV));
 		PV = Controller.Update ((SV), DeltaTime);
 
 		std::string str_output = std::to_string (PV);

@@ -5,6 +5,7 @@ namespace ControlLib {
 	static const float KP_DEFAULT = 1.0f;
 	static const float KI_DEFAULT = 0.0f;
 	static const float KD_DEFAULT = 0.0f;
+	static const unsigned int N_DEFAULT = 3;
 
 	template <class DataType>
 	class PID {
@@ -50,6 +51,19 @@ namespace ControlLib {
 		void SetZeroPoint (DataType ZeroPoint);
 
 		/**********************************************************************
+		Function name: SetN
+		Input:		N (unsigned int): the number of interations to use within
+					the 3/8ths rule.
+		Outputs:	None.
+		Description: Sets the number of iterations to use when integrating
+					 the input Error. Must be a multiple of 3. This value
+					 sets the "N" value in Simpson's 3/8ths rule formula.
+					 If a value that is not a multiple of three is supplied, 
+					 then no action will be taken.
+		**********************************************************************/
+		void SetN (unsigned int N);
+
+		/**********************************************************************
 		Function name: GetKp
 		Input:		None.
 		Outputs:	The proportional gain of the internal P controller.
@@ -72,6 +86,13 @@ namespace ControlLib {
 		DataType GetZeroPoint () const;
 
 		/**********************************************************************
+		Function name: GetN
+		Input:		None.
+		Outputs:	The N value of the 3/8ths formula.
+		**********************************************************************/
+		unsigned int GetN ();
+
+		/**********************************************************************
 		Function name: Update
 		Input:		Error (DataType): The error point for the PID controller.
 					DeltaTime (unsigned int): The amount of time since the
@@ -91,8 +112,8 @@ namespace ControlLib {
 		float Ki;
 		float Kd;
 		DataType PreviousError;
-		DataType SumErrors;
 		DataType ZeroPoint;
+		unsigned int IntegrationNValue;
 
 		/**********************************************************************
 		Function name: CalculateP
@@ -127,6 +148,7 @@ namespace ControlLib {
 		this->Kp = KP_DEFAULT;
 		this->Ki = KI_DEFAULT;
 		this->Kd = KD_DEFAULT;
+		this->IntegrationNValue = N_DEFAULT;
 	}
 
 	template<class DataType>
@@ -134,6 +156,7 @@ namespace ControlLib {
 		this->Kp = P;
 		this->Ki = KI_DEFAULT;
 		this->Kd = KD_DEFAULT;
+		this->IntegrationNValue = N_DEFAULT;
 	}
 
 	template<class DataType>
@@ -141,6 +164,7 @@ namespace ControlLib {
 		this->Kp = P;
 		this->Ki = I;
 		this->Kd = KD_DEFAULT;
+		this->IntegrationNValue = N_DEFAULT;
 	}
 
 	template<class DataType>
@@ -148,6 +172,7 @@ namespace ControlLib {
 		this->Kp = P;
 		this->Ki = I;
 		this->Kd = D;
+		this->IntegrationNValue = N_DEFAULT;
 	}
 
 	template<class DataType>
@@ -171,6 +196,14 @@ namespace ControlLib {
 	}
 
 	template<class DataType>
+	inline void PID<DataType>::SetN (unsigned int N) {
+
+		if (N % 3 == 0) {
+			this->IntegrationNValue = N;
+		}
+	}
+
+	template<class DataType>
 	inline float PID<DataType>::GetKp () const {
 		return this->Kp;
 	}
@@ -188,6 +221,11 @@ namespace ControlLib {
 	template<class DataType>
 	inline DataType PID<DataType>::GetZeroPoint () const {
 		return this->ZeroPoint;
+	}
+
+	template<class DataType>
+	inline unsigned int PID<DataType>::GetN () {
+		return IntegrationNValue;
 	}
 
 	/**********************************************************************
@@ -227,7 +265,6 @@ namespace ControlLib {
 
 	template<class DataType>
 	inline void PID<DataType>::Initialize () {
-		SumErrors = ZeroPoint;
 		PreviousError = ZeroPoint;
 	}
 
@@ -259,22 +296,23 @@ namespace ControlLib {
 	inline DataType PID<DataType>::CalculateI (DataType Error, unsigned int DeltaTime) {
 
 		DataType Output;
-
-		SumErrors += Ki * Error;
+		DataType I_Error = Ki * Error;
+		DataType Sum = I_Error;
 	
-		unsigned int n = 6; //we'll start with 6. Must be multiple of three.
+		unsigned int n = IntegrationNValue; //we'll start with 6. Must be multiple of three.
 		unsigned int H = DeltaTime / n;
 
 		for (int i = 1; i < n; i++) {
 			if (i % 3 == 0) {
-				SumErrors += 2 * Ki * Error;
+				Sum += 2 * I_Error;
 			}
 			else {
-				SumErrors += 3 * Ki * Error;
+				Sum += 3 * I_Error;
 			}
 		}
-		SumErrors += Ki * Error;
-		Output = ((3 * H) / 8)*SumErrors;
+		Sum += I_Error;
+		Output = ((3 * H) / 8)*Sum;
+
 
 		return Output;
 	}
