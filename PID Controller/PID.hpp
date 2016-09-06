@@ -4,6 +4,7 @@ namespace ControlLib {
 
 	static const float KP_DEFAULT = 1.0f;
 	static const float KI_DEFAULT = 0.0f;
+	static const float KS_DEFAULT = 1.0f;
 	static const float KD_DEFAULT = 0.0f;
 	static const unsigned int N_DEFAULT = 3;
 
@@ -64,6 +65,34 @@ namespace ControlLib {
 		void SetN (unsigned int N);
 
 		/**********************************************************************
+		Function name: SetSaturationHighLimit
+		Input:			SatFilterHigh (DataType): The high limit for the
+						controller's saturation filter.
+		Outputs:		None.
+		Description:	Sets the upper (high) limit for the controller's
+					saturation filter. When the saturation filter is enabled,
+					the controller ouput shall not exceed this limit. This
+					should be called with a valid value before enabling the
+					saturation filter in order to garuntee a defined output
+					from the controller.
+		**********************************************************************/
+		void SetSaturationHighLimit (DataType SatFilterHigh);
+
+		/**********************************************************************
+		Function name:	SetSaturationLowLimit
+		Input:			SatFilterLow (DataType): The low limit for the
+						controller's saturation filter.
+		Outputs:		None.
+		Description:	Sets thelower limit for the controller's
+					saturation filter. When the saturation filter is enabled,
+					the controller ouput shall not exceed this limit. This
+					should be called with a valid value before enabling the
+					saturation filter in order to garuntee a defined output
+					from the controller.
+		**********************************************************************/
+		void SetSaturationLowLimit (DataType SatFilterLow);
+
+		/**********************************************************************
 		Function name: GetKp
 		Input:		None.
 		Outputs:	The proportional gain of the internal P controller.
@@ -93,6 +122,21 @@ namespace ControlLib {
 		unsigned int GetN ();
 
 		/**********************************************************************
+		Function name: GetSaturationHighLimit
+		Input:		None.
+		Outputs:	The upper (high) limit for the controller's saturation
+		filter.
+		**********************************************************************/
+		DataType GetSaturationHighLimit () const;
+
+		/**********************************************************************
+		Function name: GetSaturationLowLimit
+		Input:		None.
+		Outputs:	The lower limit for the controller's saturation filter.
+		**********************************************************************/
+		DataType GetSaturationLowLimit () const;
+
+		/**********************************************************************
 		Function name: Update
 		Input:		Error (DataType): The error point for the PID controller.
 					DeltaTime (unsigned int): The amount of time since the
@@ -107,13 +151,22 @@ namespace ControlLib {
 
 		void Initialize ();
 
+		void EnableSaturationFilter ();
+		void DisableSaturationFilter ();
+
 	protected:
-		float Kp;
-		float Ki;
-		float Kd;
-		DataType PreviousError;
-		DataType ZeroPoint;
-		unsigned int IntegrationNValue;
+		float Kp;							//Proportional gain.
+		float Ki;							//Integral gain.
+		float Ks;							//Anti-windup gain.
+		float Kd;							//Derivative gain.
+		DataType Shortcoming;				//Saturation discrepancy. 
+		DataType PreviousError;				//Previous error point.
+		DataType SumErrors;					//Sum of all errors.
+		DataType ZeroPoint;					//The number zero.
+		DataType SaturationLimitHigh;		//Upper limit for sat filter.
+		DataType SaturationLimitLow;		//Lower limit for sat filter.
+		unsigned int IntegrationNValue;		//Variable 'n' in 3/8th's rule.
+		bool SaturationFilterEnabled;		//Control flag for saturation filter.
 
 		/**********************************************************************
 		Function name: CalculateP
@@ -141,6 +194,8 @@ namespace ControlLib {
 		of the internal derivative controller.
 		**********************************************************************/
 		DataType CalculateD (DataType Error, unsigned int DeltaTime);
+
+		DataType SaturationFilter (DataType Error);
 	};
 
 	template<class DataType>
@@ -149,6 +204,7 @@ namespace ControlLib {
 		this->Ki = KI_DEFAULT;
 		this->Kd = KD_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
+		this->SaturationFilterEnabled = false;
 	}
 
 	template<class DataType>
@@ -157,6 +213,7 @@ namespace ControlLib {
 		this->Ki = KI_DEFAULT;
 		this->Kd = KD_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
+		this->SaturationFilterEnabled = false;
 	}
 
 	template<class DataType>
@@ -165,6 +222,7 @@ namespace ControlLib {
 		this->Ki = I;
 		this->Kd = KD_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
+		this->SaturationFilterEnabled = false;
 	}
 
 	template<class DataType>
@@ -173,6 +231,7 @@ namespace ControlLib {
 		this->Ki = I;
 		this->Kd = D;
 		this->IntegrationNValue = N_DEFAULT;
+		this->SaturationFilterEnabled = false;
 	}
 
 	template<class DataType>
@@ -204,6 +263,16 @@ namespace ControlLib {
 	}
 
 	template<class DataType>
+	inline void PID<DataType>::SetSaturationHighLimit (DataType SatFilterHigh) {
+		this->SaturationLimitHigh = SatFilterHigh;
+	}
+
+	template<class DataType>
+	inline void PID<DataType>::SetSaturationLowLimit (DataType SatFilterLow) {
+		this->SaturationLimitLow = SatFilterLow;
+	}
+
+	template<class DataType>
 	inline float PID<DataType>::GetKp () const {
 		return this->Kp;
 	}
@@ -226,6 +295,16 @@ namespace ControlLib {
 	template<class DataType>
 	inline unsigned int PID<DataType>::GetN () {
 		return IntegrationNValue;
+	}
+
+	template<class DataType>
+	inline DataType PID<DataType>::GetSaturationHighLimit () const {
+		return this->SaturationLimitHigh;
+	}
+
+	template<class DataType>
+	inline DataType PID<DataType>::GetSaturationLowLimit () const {
+		return this->SaturationLimitLow;
 	}
 
 	/**********************************************************************
@@ -258,6 +337,19 @@ namespace ControlLib {
 			Output += CalculateD (Error, DeltaTime);
 		}
 
+		//Run the controller output through the saturation filter.
+		if (SaturationFilterEnabled) {
+
+			//Capture the ideal output for anti-windup algorithm.
+			DataType IdealOutput = Output;
+
+			//Calculate the output due to saturaiton.
+			Output = SaturationFilter (Output);
+
+			//Capture the discrepency between the clamped and ideal outputs.
+			Shortcoming = IdealOutput - Output;
+		}
+
 		PreviousError = Error;
 
 		return Output;
@@ -265,7 +357,18 @@ namespace ControlLib {
 
 	template<class DataType>
 	inline void PID<DataType>::Initialize () {
+		SumErrors = ZeroPoint;
 		PreviousError = ZeroPoint;
+	}
+
+	template<class DataType>
+	inline void PID<DataType>::EnableSaturationFilter () {
+		this->SaturationFilterEnabled = true;
+	}
+
+	template<class DataType>
+	inline void PID<DataType>::DisableSaturationFilter () {
+		this->SaturationFilterEnabled = false;
 	}
 
 	/**********************************************************************
@@ -296,23 +399,32 @@ namespace ControlLib {
 	inline DataType PID<DataType>::CalculateI (DataType Error, unsigned int DeltaTime) {
 
 		DataType Output;
-		DataType I_Error = Ki * Error;
-		DataType Sum = I_Error;
+
+		if (SaturationFilterEnabled) {
+			SumErrors += Ki*(Error - (Ks * Shortcoming));
+		}
+		else {
+			SumErrors += Ki*Error;
+		}
+
+		DataType Sum = SumErrors;
 	
-		unsigned int n = IntegrationNValue; //we'll start with 6. Must be multiple of three.
+		unsigned int n = IntegrationNValue;
 		unsigned int H = DeltaTime / n;
 
 		for (int i = 1; i < n; i++) {
 			if (i % 3 == 0) {
-				Sum += 2 * I_Error;
+				Sum += 2 * SumErrors;
 			}
 			else {
-				Sum += 3 * I_Error;
+				Sum += 3 * SumErrors;
 			}
 		}
-		Sum += I_Error;
-		Output = ((3 * H) / 8)*Sum;
 
+		Sum += SumErrors;
+
+		//0.375f = 3/8. Optimized to eliminate a division for MCUs.
+		Output = 0.375f * H * Sum;
 
 		return Output;
 	}
@@ -331,6 +443,20 @@ namespace ControlLib {
 		DataType Output;
 		Output = (Kd * (Error - PreviousError)) / DeltaTime;
 		return Output;
+	}
+
+	template<class DataType>
+	inline DataType PID<DataType>::SaturationFilter (DataType Error) {
+		
+		if (Error > SaturationLimitLow && Error < SaturationLimitHigh) {
+			return Error;
+		}
+		else if (Error <= SaturationLimitLow) {
+			return SaturationLimitLow;
+		}
+		else if (Error >= SaturationLimitHigh) {
+			return SaturationLimitHigh;
+		}
 	}
 
 

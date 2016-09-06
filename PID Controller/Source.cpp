@@ -8,7 +8,9 @@ void main () {
 	ControlLib::PID<float> Controller;
 	Controller.SetKp (10.0f);
 	Controller.SetKi (0.01f);
-	Controller.SetZeroPoint (0.0f);
+	Controller.SetKd (0.0f);
+	Controller.SetN (9);
+	Controller.SetZeroPoint (0);
 	Controller.Initialize ();
 
 	CSV_File output;
@@ -23,7 +25,7 @@ void main () {
 		if (i < 100) {
 		}
 		else if (i == 100) {
-			SV = 100.0f;
+			SV = 50.0f;
 		}
 		else if (i == 150) {
 			SV = 0.0f;
