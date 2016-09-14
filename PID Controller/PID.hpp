@@ -394,6 +394,7 @@ namespace ControlLib {
 					of the internal integral controller.
 	History:	9/3/2016: Initial Development.
 				9/4/2016: Implemented the 3/8th's rule for integration.
+				9/14/2016: Got rid of 3/8th's rule.
 	**********************************************************************/
 	template<class DataType>
 	inline DataType PID<DataType>::CalculateI (DataType Error, unsigned int DeltaTime) {
@@ -407,24 +408,7 @@ namespace ControlLib {
 			SumErrors += Ki*Error;
 		}
 
-		DataType Sum = SumErrors;
-	
-		unsigned int n = IntegrationNValue;
-		unsigned int H = DeltaTime / n;
-
-		for (int i = 1; i < n; i++) {
-			if (i % 3 == 0) {
-				Sum += 2 * SumErrors;
-			}
-			else {
-				Sum += 3 * SumErrors;
-			}
-		}
-
-		Sum += SumErrors;
-
-		//0.375f = 3/8. Optimized to eliminate a division for MCUs.
-		Output = 0.375f * H * Sum;
+		Output = SumErrors * DeltaTime;
 
 		return Output;
 	}
