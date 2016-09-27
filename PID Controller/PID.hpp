@@ -52,19 +52,6 @@ namespace ControlLib {
 		void SetZeroPoint (DataType ZeroPoint);
 
 		/**********************************************************************
-		Function name: SetN
-		Input:		N (unsigned int): the number of interations to use within
-					the 3/8ths rule.
-		Outputs:	None.
-		Description: Sets the number of iterations to use when integrating
-					 the input Error. Must be a multiple of 3. This value
-					 sets the "N" value in Simpson's 3/8ths rule formula.
-					 If a value that is not a multiple of three is supplied, 
-					 then no action will be taken.
-		**********************************************************************/
-		void SetN (unsigned int N);
-
-		/**********************************************************************
 		Function name: SetSaturationHighLimit
 		Input:			SatFilterHigh (DataType): The high limit for the
 						controller's saturation filter.
@@ -113,13 +100,6 @@ namespace ControlLib {
 		**********************************************************************/
 		float GetKd () const;
 		DataType GetZeroPoint () const;
-
-		/**********************************************************************
-		Function name: GetN
-		Input:		None.
-		Outputs:	The N value of the 3/8ths formula.
-		**********************************************************************/
-		unsigned int GetN ();
 
 		/**********************************************************************
 		Function name: GetSaturationHighLimit
@@ -255,14 +235,6 @@ namespace ControlLib {
 	}
 
 	template<class DataType>
-	inline void PID<DataType>::SetN (unsigned int N) {
-
-		if (N % 3 == 0) {
-			this->IntegrationNValue = N;
-		}
-	}
-
-	template<class DataType>
 	inline void PID<DataType>::SetSaturationHighLimit (DataType SatFilterHigh) {
 		this->SaturationLimitHigh = SatFilterHigh;
 	}
@@ -293,11 +265,6 @@ namespace ControlLib {
 	}
 
 	template<class DataType>
-	inline unsigned int PID<DataType>::GetN () {
-		return IntegrationNValue;
-	}
-
-	template<class DataType>
 	inline DataType PID<DataType>::GetSaturationHighLimit () const {
 		return this->SaturationLimitHigh;
 	}
@@ -322,18 +289,20 @@ namespace ControlLib {
 	template<class DataType>
 	inline DataType PID<DataType>::Update (DataType Error, unsigned int DeltaTime) {
 
-		DataType Output;
+		DataType Output = ZeroPoint;
 
 		//Calculate proportional portion of the output.
-		Output = CalculateP (Error);
+		if (Kp != ZeroPoint) {
+			Output += CalculateP (Error);
+		}
 		
 		//Calculate the integral portion if enabled.
-		if (Ki != 0.0f) {
+		if (Ki != ZeroPoint) {
 			Output += CalculateI (Error, DeltaTime);
 		}
 
 		//Calculate the derivative portion if enabled.
-		if (Kd != 0.0f) {
+		if (Kd != ZeroPoint) {
 			Output += CalculateD (Error, DeltaTime);
 		}
 

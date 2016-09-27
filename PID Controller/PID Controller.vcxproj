@@ -148,6 +148,7 @@
   <ItemGroup>
     <ClInclude Include="File.h" />
     <ClInclude Include="PID.hpp" />
+    <ClInclude Include="TransferFunction.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="File.cpp" />

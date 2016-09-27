@@ -21,6 +21,9 @@
     <ClInclude Include="File.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TransferFunction.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp">
