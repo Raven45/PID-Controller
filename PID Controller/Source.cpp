@@ -19,7 +19,7 @@ void main () {
 	Controller.SetKp (35.0f);				//Proportional gain.
 	Controller.SetKi (0.1f);				//Small amount of integral gain.
 	Controller.SetKd (0.0f);				//Turn off derivative action
-	Controller.SetKs (0.05f);				//Turn off integral controller suring saturation.
+	Controller.SetKs (0.033f);				//Turn off integral controller suring saturation.
 	Controller.SetZeroPoint (0.0f);			//Define zero.
 	Controller.SetSaturationHighLimit (12.0f);
 	Controller.SetSaturationLowLimit (0.0f);
