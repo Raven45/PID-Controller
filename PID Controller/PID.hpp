@@ -49,6 +49,14 @@ namespace ControlLib {
 		the specified input Kd (float).
 		**********************************************************************/
 		void SetKd (float Kd);
+
+		/**********************************************************************
+		Function name: SetKs
+		Input:		Ks (float): the specified gain for the anti-windup algorithm.
+		Outputs:	None.
+		Description: Sets the gain for the anti-windup algorithm.
+		**********************************************************************/
+		void SetKs (float Ks);
 		void SetZeroPoint (DataType ZeroPoint);
 
 		/**********************************************************************
@@ -99,6 +107,13 @@ namespace ControlLib {
 		Outputs:	The proportional gain of the internal D controller.
 		**********************************************************************/
 		float GetKd () const;
+
+		/**********************************************************************
+		Function name: GetKs
+		Input:		None.
+		Outputs:	The gain for the anti-windup algorithm.
+		**********************************************************************/
+		float GetKs () const;
 		DataType GetZeroPoint () const;
 
 		/**********************************************************************
@@ -147,6 +162,7 @@ namespace ControlLib {
 		DataType SaturationLimitLow;		//Lower limit for sat filter.
 		unsigned int IntegrationNValue;		//Variable 'n' in 3/8th's rule.
 		bool SaturationFilterEnabled;		//Control flag for saturation filter.
+		bool Saturated;						//Control flag for detecting output saturation.
 
 		/**********************************************************************
 		Function name: CalculateP
@@ -185,6 +201,7 @@ namespace ControlLib {
 		this->Kd = KD_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
+		this->Saturated = false;
 	}
 
 	template<class DataType>
@@ -194,6 +211,7 @@ namespace ControlLib {
 		this->Kd = KD_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
+		this->Saturated = false;
 	}
 
 	template<class DataType>
@@ -203,6 +221,7 @@ namespace ControlLib {
 		this->Kd = KD_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
+		this->Saturated = false;
 	}
 
 	template<class DataType>
@@ -212,6 +231,7 @@ namespace ControlLib {
 		this->Kd = D;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
+		this->Saturated = false;
 	}
 
 	template<class DataType>
@@ -227,6 +247,11 @@ namespace ControlLib {
 	template<class DataType>
 	inline void PID<DataType>::SetKd (float Kd) {
 		this->Kd = Kd;
+	}
+
+	template<class DataType>
+	inline void PID<DataType>::SetKs (float Ks) {
+		this->Ks = Ks;
 	}
 
 	template<class DataType>
@@ -260,6 +285,11 @@ namespace ControlLib {
 	}
 
 	template<class DataType>
+	inline float PID<DataType>::GetKs () const {
+		return this->Ks;
+	}
+
+	template<class DataType>
 	inline DataType PID<DataType>::GetZeroPoint () const {
 		return this->ZeroPoint;
 	}
@@ -290,6 +320,7 @@ namespace ControlLib {
 	inline DataType PID<DataType>::Update (DataType Error, unsigned int DeltaTime) {
 
 		DataType Output = ZeroPoint;
+		DataType IdealOutput = ZeroPoint;
 
 		//Calculate proportional portion of the output.
 		if (Kp != ZeroPoint) {
@@ -306,21 +337,18 @@ namespace ControlLib {
 			Output += CalculateD (Error, DeltaTime);
 		}
 
-		//Run the controller output through the saturation filter.
-		if (SaturationFilterEnabled) {
-
-			//Capture the ideal output for anti-windup algorithm.
-			DataType IdealOutput = Output;
-
-			//Calculate the output due to saturaiton.
+		if (Output > SaturationLimitHigh || Output < SaturationLimitLow) {
+			Saturated = true;
+			IdealOutput = Output;
 			Output = SaturationFilter (Output);
-
-			//Capture the discrepency between the clamped and ideal outputs.
 			Shortcoming = IdealOutput - Output;
+		}
+		else if (Saturated != false) {
+			Saturated = false;
 		}
 
 		PreviousError = Error;
-
+		
 		return Output;
 	}
 
@@ -328,6 +356,7 @@ namespace ControlLib {
 	inline void PID<DataType>::Initialize () {
 		SumErrors = ZeroPoint;
 		PreviousError = ZeroPoint;
+		Shortcoming = ZeroPoint;
 	}
 
 	template<class DataType>
@@ -370,7 +399,7 @@ namespace ControlLib {
 
 		DataType Output;
 
-		if (SaturationFilterEnabled) {
+		if (Saturated) {
 			SumErrors += Ki*(Error - (Ks * Shortcoming));
 		}
 		else {
