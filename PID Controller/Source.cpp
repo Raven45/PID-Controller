@@ -16,10 +16,10 @@ void main () {
 	TransferFunction <float> Plant(A,B);	//Define the plant.
 
 	ControlLib::PID<float> Controller;		//Create controller instance.
-	Controller.SetKp (35.0f);				//Proportional gain.
-	Controller.SetKi (0.1f);				//Small amount of integral gain.
+	Controller.SetKp (50.0f);				//Proportional gain.
+	Controller.SetKi (0.9f);				//Small amount of integral gain.
 	Controller.SetKd (0.0f);				//Turn off derivative action
-	Controller.SetKs (0.033f);				//Turn off integral controller suring saturation.
+	Controller.SetKs (0.0f);				//Set anti-windup gain
 	Controller.SetZeroPoint (0.0f);			//Define zero.
 	Controller.SetSaturationHighLimit (12.0f);
 	Controller.SetSaturationLowLimit (0.0f);
@@ -36,12 +36,12 @@ void main () {
 	float Kv = 954.93f;
 
 	//Loop through fifty test values.
-	for (int i = 0; i < 50; i++) {
+	for (int i = 0; i < 100; i++) {
 
 		std::vector<std::string> Line;
 		if (i == 10) {
-			//set to 3000 rpm
-			SV = 3000.0f;					//Sudden change in the set point.
+			//set to 3500 rpm
+			SV = 3500.0f;					//Sudden change in the set point.
 		}
 
 		//Write setpoint to file.

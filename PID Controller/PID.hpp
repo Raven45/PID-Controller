@@ -4,7 +4,7 @@ namespace ControlLib {
 
 	static const float KP_DEFAULT = 1.0f;
 	static const float KI_DEFAULT = 0.0f;
-	static const float KS_DEFAULT = 1.0f;
+	static const float KS_DEFAULT = 0.0f;
 	static const float KD_DEFAULT = 0.0f;
 	static const unsigned int N_DEFAULT = 3;
 
@@ -199,6 +199,7 @@ namespace ControlLib {
 		this->Kp = KP_DEFAULT;
 		this->Ki = KI_DEFAULT;
 		this->Kd = KD_DEFAULT;
+		this->Ks = KS_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
 		this->Saturated = false;
@@ -209,6 +210,7 @@ namespace ControlLib {
 		this->Kp = P;
 		this->Ki = KI_DEFAULT;
 		this->Kd = KD_DEFAULT;
+		this->Ks = KS_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
 		this->Saturated = false;
@@ -219,6 +221,7 @@ namespace ControlLib {
 		this->Kp = P;
 		this->Ki = I;
 		this->Kd = KD_DEFAULT;
+		this->Ks = KS_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
 		this->Saturated = false;
@@ -229,6 +232,7 @@ namespace ControlLib {
 		this->Kp = P;
 		this->Ki = I;
 		this->Kd = D;
+		this->Ks = KS_DEFAULT;
 		this->IntegrationNValue = N_DEFAULT;
 		this->SaturationFilterEnabled = false;
 		this->Saturated = false;
@@ -337,14 +341,13 @@ namespace ControlLib {
 			Output += CalculateD (Error, DeltaTime);
 		}
 
-		if (Output > SaturationLimitHigh || Output < SaturationLimitLow) {
-			Saturated = true;
+		if (SaturationFilterEnabled) {
 			IdealOutput = Output;
 			Output = SaturationFilter (Output);
-			Shortcoming = IdealOutput - Output;
-		}
-		else if (Saturated != false) {
-			Saturated = false;
+			if (Saturated) {
+
+				Shortcoming = IdealOutput - Output;
+			}
 		}
 
 		PreviousError = Error;
@@ -431,12 +434,15 @@ namespace ControlLib {
 	inline DataType PID<DataType>::SaturationFilter (DataType Error) {
 		
 		if (Error > SaturationLimitLow && Error < SaturationLimitHigh) {
+			Saturated = false;
 			return Error;
 		}
 		else if (Error <= SaturationLimitLow) {
+			Saturated = true;
 			return SaturationLimitLow;
 		}
 		else if (Error >= SaturationLimitHigh) {
+			Saturated = true;
 			return SaturationLimitHigh;
 		}
 	}
